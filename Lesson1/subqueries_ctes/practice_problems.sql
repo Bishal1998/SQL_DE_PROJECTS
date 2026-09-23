@@ -113,3 +113,49 @@ The WHEN MATCHED clause only triggers for rows where the join condition evaluate
 MERGE INTO job_skill_priorities AS tgt
 USING staging.priority_skills AS src
 ON tgt.skill_id = src.skill_id
+
+WHEN MATCHED THEN 
+UPDATE SET
+    skill_name = src.skill_name,
+    priority_lvl = src.priority_lvl;
+
+SELECT * FROM job_skill_priorities;
+
+/*
+ynchronizing Skill Priority Updates (1.24.5) - Problem
+1.24 DDL & DML - Pt. 3
+Problem Statement
+Maintaining data integrity and synchronization between staging and production tables is a critical skill for data engineers. In this exercise, you need to update priority rankings for specific technical skills in a staging environment and then synchronize those changes into the main production table while tracking the update status.
+
+Task
+
+Create a SQL file in the Lesson folder named 1.24.5.sql.
+Use the company_jobs database.
+Update the staging.priority_skills table to set the priority_lvl to 1 for the skill where the skill_id is 0 (SQL).
+Update the staging.priority_skills table to set the priority_lvl to 2 for the skill where the skill_id is 1 (Python).
+Use a MERGE statement to synchronize the main.job_skill_priorities table (the target) with the staging.priority_skills table (the source) based on matching skill_id values.
+Implement logic within the MERGE to only update records where the priority_lvl has changed or is currently NULL in the target table.
+When a match is found and an update is required, update the priority_lvl and set the status column to 'PRIORITY_CHANGE'.
+Hint
+When using the MERGE statement, remember that WHEN MATCHED can take additional AND conditions to prevent unnecessary updates on identical rows.
+Consider how NULL values behave in comparisons; a simple <> operator might not be enough to catch changes if the original value is NULL.
+*/
+
+UPDATE staging.priority_skills
+SET priority_lvl = 1
+WHERE skill_id = 0;
+
+UPDATE staging.priority_skills
+SET priority_lvl = 2
+WHERE skill_id = 1;
+
+MERGE INTO main.job_skill_priorities AS tgt
+USING staging.priority_skills AS src
+ON tgt.skill_id = src.skill_id
+
+WHEN MATCHED AND tgt.priority_lvl IS DISTINCT FROM src.priority_lvl THEN
+UPDATE SET
+    priority_lvl = src.priority_lvl,
+    status = 'PRIORITY_CHANGE';
+
+SELECT * FROM job_skill_priorities;
