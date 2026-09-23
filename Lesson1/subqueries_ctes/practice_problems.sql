@@ -159,3 +159,36 @@ UPDATE SET
     status = 'PRIORITY_CHANGE';
 
 SELECT * FROM job_skill_priorities;
+
+/*
+Synchronizing Source Deletions via Merge (1.24.6) - Problem
+1.24 DDL & DML - Pt. 3
+Problem Statement
+Maintain the integrity of the job skills priority list by ensuring that deletions in the staging environment are reflected in your production data. You need to simulate a record removal and then perform a synchronization that updates the job_skill_priorities table, marking missing source records as inactive rather than deleting them permanently.
+
+Task
+
+Create a SQL file in the Lesson folder named 1.24.6.sql.
+Use the company_jobs database.
+Write a statement to DELETE the record from staging.priority_skills where the skill_id is 183.
+Perform a MERGE into the job_skill_priorities table using staging.priority_skills as the source.
+Join the tables on the skill_id column.
+Add a clause to handle the scenario where a record is NOT MATCHED BY SOURCE.
+In that scenario, UPDATE the status column in the target table to the value 'INACTIVE'.
+Hint
+Standard JOIN logic in a MERGE usually focuses on what is in the source; however, specialized clauses allow you to take action on target records that no longer have a corresponding match in your source data.
+Remember that a Soft Delete updates a status flag (like 'INACTIVE') instead of using the DELETE command on the target table, which helps maintain historical audit trails.
+*/
+
+DELETE FROM staging.priority_skills
+WHERE skill_id = 183;
+
+MERGE INTO job_skill_priorities AS tgt
+USING staging.priority_skills AS src
+ON tgt.skill_id = src.skill_id
+
+WHEN NOT MATCHED BY SOURCE THEN
+UPDATE SET
+    status = 'INACTIVE';
+
+SELECT * FROM staging.priority_skills;
