@@ -192,3 +192,32 @@ UPDATE SET
     status = 'INACTIVE';
 
 SELECT * FROM staging.priority_skills;
+
+/*
+Delete Staging Discrepancies (1.24.7) - Problem
+1.24 DDL & DML - Pt. 3
+Problem Statement
+After marking skills as INACTIVE in previous steps, you've been tasked to perform a physical cleanup of the database. To maintain a lean and accurate system, you must perform a hard delete of any records in the job_skill_priorities production table that no longer have a corresponding entry in the staging.priority_skills table. This ensures the environment only contains currently valid priority skills.
+
+Task
+
+Create a SQL file in the Lesson folder named 1.24.7.sql.
+Use the company_jobs database.
+Write a DELETE statement to remove rows from the job_skill_priorities table (aliased as tgt).
+Use a NOT EXISTS subquery to target records where the skill_id does not exist in the staging.priority_skills table (aliased as src).
+Include a final SELECT statement to validate that skill_id 183 has been physically removed.
+Hint
+The NOT EXISTS operator is highly efficient for "anti-joins." It checks for the absence of a relationship between the target table and the subquery source.
+When using DELETE with aliases, ensure your syntax matches the specific SQL dialect requirements (e.g., DELETE FROM table AS alias or DELETE alias FROM table AS alias).
+Always verify your WHERE clause logic before executing a delete to avoid removing valid production data.
+
+*/
+
+DELETE FROM job_skill_priorities AS tgt
+WHERE NOT EXISTS(
+    SELECT 1
+    FROM staging.priority_skills AS src
+    WHERE tgt.skill_id = src.skill_id
+);
+
+SELECT * FROM job_skill_priorities WHERE skill_id = 183;
