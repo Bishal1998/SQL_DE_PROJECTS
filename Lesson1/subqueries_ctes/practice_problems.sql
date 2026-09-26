@@ -221,3 +221,56 @@ WHERE NOT EXISTS(
 );
 
 SELECT * FROM job_skill_priorities WHERE skill_id = 183;
+
+/*
+Synchronizing Skill Priority Levels (1.24.8) - Problem
+1.24 DDL & DML - Pt. 3
+Problem Statement
+After successfully cleaning up stale records in the previous exercise, the priority rankings for various technical skills have been finalized in the staging environment. You've been tasked to synchronize these rankings with the production job_skill_priorities table. Because new high-priority skills like 'aws' have been identified, you must handle both updating existing records and inserting new associations for jobs that require these skills.
+
+Task
+
+Create a SQL file in the Lesson folder named 1.24.8.sql.
+Ensure you are working within the company_jobs database context.
+Insert a new record into staging.priority_skills for the skill 'aws' with a skill_id of 77 and a priority_lvl of 3.
+Perform a MERGE operation into the job_skill_priorities table (the target) using a source subquery.
+Source Subquery: Join data_jobs.skills_job_dim with staging.priority_skills to get a list of all jobs requiring these priority skills.
+Join Condition: Match the target and source on both job_id AND skill_id to ensure specific job-skill pairings are updated correctly.
+WHEN MATCHED: Update the priority_lvl and skill_name in the target table.
+WHEN NOT MATCHED: Insert the job_id, skill_id, skill_name, priority_lvl, and a hardcoded status of 'NEW_SKILL'.
+Hint
+The Subquery Source: In your MERGE statement, the USING clause shouldn't just point to a table. Instead, use a SELECT statement that joins your job dimensions with your priority staging table to ensure you have the job_id for every skill.
+Composite Keys: Since a single job can have many skills and a single skill can belong to many jobs, matching on just skill_id isn't enough. Use AND in your ON clause to match both job_id and skill_id.
+Aliases: Use tgt and src as aliases to keep your UPDATE and INSERT logic clean and readable.
+*/
+
+INSERT INTO staging.priority_skills(skill_id, skill_name, priority_lvl)
+VALUES(77, 'aws', 3);
+
+
+MERGE INTO job_skill_priorities AS tgt
+USING (
+    SELECT 
+        sjd.job_id, 
+        ps.skill_id, 
+        ps.skill_name, 
+        ps.priority_lvl
+    FROM data_jobs.skills_job_dim AS sjd
+    INNER JOIN staging.priority_skills AS ps ON sjd.skill_id = ps.skill_id
+) AS src
+ON tgt.job_id = src.job_id 
+   AND tgt.skill_id = src.skill_id
+
+WHEN MATCHED THEN
+    UPDATE SET 
+        priority_lvl = src.priority_lvl,
+        skill_name = src.skill_name
+WHEN NOT MATCHED THEN
+    INSERT (job_id, skill_id, skill_name, priority_lvl, status)
+    VALUES (src.job_id, src.skill_id, src.skill_name, src.priority_lvl, 'NEW_SKILL');
+
+SELECT * FROM staging.priority_skills;
+
+SELECT *
+FROM job_skill_priorities
+ORDER BY job_id;
