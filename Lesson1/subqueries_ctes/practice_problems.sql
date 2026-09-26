@@ -274,3 +274,54 @@ SELECT * FROM staging.priority_skills;
 SELECT *
 FROM job_skill_priorities
 ORDER BY job_id;
+
+/*
+Automating Record Deletion (1.24.9) - Problem
+1.24 DDL & DML - Pt. 3
+Problem Statement
+In this scenario, you are optimizing your ETL pipeline by replacing a multi-step "Update then Delete" process with a single, atomic command. You will use a MERGE statement to synchronize the job_skill_priorities table, ensuring it automatically handles new records, updates existing ones, and removes entries that no longer exist in your source data.
+
+Task
+
+Create a SQL file in the Lesson folder named 1.24.9.sql.
+Use the company_jobs database.
+First, simulate a change in your source data by deleting the record for 'python' (skill_id = 1) from the staging.priority_skills table.
+Write a MERGE statement to synchronize the job_skill_priorities table with a source subquery.
+The source subquery should join data_jobs.skills_job_dim with staging.priority_skills to gather the necessary job and priority details.
+Match the target and source using both job_id and skill_id.
+Configure the MERGE to UPDATE existing records and INSERT new records (marking them with a 'NEW_SKILL' status).
+Critically, use the WHEN NOT MATCHED BY SOURCE clause to automatically DELETE any records in the target table that no longer exist in your source query.
+Hint
+Remember that WHEN NOT MATCHED BY SOURCE specifically targets rows that exist in the target but are missing from the source.
+Pay close attention to your ON clause; since you are tracking specific skills for specific jobs, you need a composite key of both IDs to ensure you don't accidentally delete the wrong records.
+Verify your results at the end by selecting from the target table where skill_id = 1; if the merge worked, it should return zero results.
+*/
+
+DELETE FROM staging.priority_skills WHERE skill_id = 1;
+
+SELECT * FROM staging.priority_skills;
+
+MERGE INTO job_skill_priorities AS tgt
+USING (
+    SELECT 
+        sjd.job_id, 
+        ps.skill_id, 
+        ps.skill_name, 
+        ps.priority_lvl
+    FROM data_jobs.skills_job_dim AS sjd
+    INNER JOIN staging.priority_skills AS ps ON sjd.skill_id = ps.skill_id
+) AS src
+ON tgt.job_id = src.job_id 
+   AND tgt.skill_id = src.skill_id
+
+WHEN MATCHED THEN
+    UPDATE SET 
+        priority_lvl = src.priority_lvl,
+        skill_name = src.skill_name
+
+WHEN NOT MATCHED THEN
+    INSERT (job_id, skill_id, skill_name, priority_lvl, status)
+    VALUES (src.job_id, src.skill_id, src.skill_name, src.priority_lvl, 'NEW_SKILL')
+
+WHEN NOT MATCHED BY SOURCE THEN
+    DELETE;
